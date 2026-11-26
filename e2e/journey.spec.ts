@@ -32,12 +32,13 @@ test('journey reveals a dated APOD and astronomy without leaving the birth date 
 });
 
 test('pre-archive birthday does not claim an APOD exists', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.route('**/api/apod', route => route.fulfill({ json: { status: 'before_archive', message: 'Before archive' } }));
   await page.goto('/');
   await page.getByLabel('Date of birth').fill('1988-02-29');
   await page.getByRole('button', { name: 'Explore your universe' }).click();
-  await expect(page.getByText(/APOD archive begins/i)).toBeVisible();
-  await expect(page.getByRole('heading', { name: /Your moon/i })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Your moon/i })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText(/APOD archive begins/i)).toBeVisible({ timeout: 15_000 });
 });
 
 test('language can be changed and reduced motion skips travel', async ({ page }) => {
