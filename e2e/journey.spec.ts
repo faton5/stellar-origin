@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 
 const apod = {
@@ -16,11 +16,16 @@ const apod = {
   }
 };
 
+async function exploreDate(page: Page, date: string) {
+  await page.getByLabel('Date of birth').fill(date);
+  await page.getByRole('button', { name: 'Explore your universe' }).click();
+  await expect(page.locator('#journey-title')).toBeVisible({ timeout: 20_000 });
+}
+
 test('journey reveals a dated APOD and astronomy without leaving the birth date in the URL', async ({ page }) => {
   await page.route('**/api/apod', route => route.fulfill({ json: apod }));
   await page.goto('/');
-  await page.getByLabel('Date of birth').fill('2001-01-01');
-  await page.getByRole('button', { name: 'Explore your universe' }).click();
+  await exploreDate(page, '2001-01-01');
   await expect(page.getByText('A Real Test Galaxy')).toBeVisible();
   await expect(page.getByText('Original science text.')).toBeVisible();
   await expect(page.getByText('Credit: Test observer')).toBeVisible();
@@ -35,8 +40,7 @@ test('pre-archive birthday does not claim an APOD exists', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.route('**/api/apod', route => route.fulfill({ json: { status: 'before_archive', message: 'Before archive' } }));
   await page.goto('/');
-  await page.getByLabel('Date of birth').fill('1988-02-29');
-  await page.getByRole('button', { name: 'Explore your universe' }).click();
+  await exploreDate(page, '1988-02-29');
   await expect(page.getByRole('heading', { name: /Your moon/i })).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText(/APOD archive begins/i)).toBeVisible({ timeout: 15_000 });
 });
@@ -55,8 +59,7 @@ test('time travel refreshes the APOD and comparison shows both media and lunar p
     return route.fulfill({ json: { status: 'ok', apod: { ...apod.apod, date, title: `APOD ${date}` } } });
   });
   await page.goto('/');
-  await page.getByLabel('Date of birth').fill('2001-01-01');
-  await page.getByRole('button', { name: 'Explore your universe' }).click();
+  await exploreDate(page, '2001-01-01');
   await expect(page.getByRole('heading', { name: 'APOD 2001-01-01' })).toBeVisible();
   await page.getByRole('button', { name: /Webb launch/ }).click();
   await expect(page.getByRole('heading', { name: 'APOD 2021-12-25' })).toBeVisible();
@@ -71,8 +74,7 @@ test('time travel refreshes the APOD and comparison shows both media and lunar p
 test('passport export defaults to private and creates the selected PNG dimensions', async ({ page }) => {
   await page.route('**/api/apod', route => route.fulfill({ json: apod }));
   await page.goto('/');
-  await page.getByLabel('Date of birth').fill('2001-01-01');
-  await page.getByRole('button', { name: 'Explore your universe' }).click();
+  await exploreDate(page, '2001-01-01');
   const privacy = page.getByLabel('Include birth date and APOD title');
   await expect(privacy).not.toBeChecked();
   const [privateDownload] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Download PNG' }).click()]);
@@ -98,8 +100,7 @@ test('solar viewer falls back to 2D and supports keyboard selection without WebG
   });
   await page.route('**/api/apod', route => route.fulfill({ json: apod }));
   await page.goto('/');
-  await page.getByLabel('Date of birth').fill('2001-01-01');
-  await page.getByRole('button', { name: 'Explore your universe' }).click();
+  await exploreDate(page, '2001-01-01');
   const solar = page.getByRole('region', { name: 'Solar System explorer' });
   await expect(solar.getByText('2D MAP')).toBeVisible();
   await solar.focus();
